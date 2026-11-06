@@ -11,7 +11,7 @@ import pandas as pd
 from dateutil import parser as dtparser
 from dateutil import tz
 
-SCHEMA_VERSION = "gfr-0.1"
+from .schema import SCHEMA_VERSION
 
 
 def sha256_file(p: Path) -> str:
