@@ -28,6 +28,20 @@ _SOURCE_LABEL = {
 # Sources that carry meaningful alt/vel data for the main plot panels
 _PLOT_SOURCES = {"telemega_std", "blueraven_std", "featherweight_std"}
 
+
+def _plot_label(key: str) -> str | None:
+    """Legend label for an altitude/velocity source, or None if it is not plotted there.
+
+    Altus Metrum logs beyond the primary TeleMega are named <kind>_<serial>_std.
+    """
+    if key in _PLOT_SOURCES:
+        return _SOURCE_LABEL.get(key, key)
+    parts = key.split("_")
+    if len(parts) == 3 and parts[0] in ("altusmetrum", "telemega") and parts[2] == "std":
+        return f"Altus Metrum s/n {parts[1]}"
+    return None
+
+
 # TeleMega state names to watch for event transitions
 _TM_EVENT_STATES = [
     ("coast", "Burnout"),  # first "coast" or "fast" row marks motor burnout
@@ -246,9 +260,8 @@ def plot_flight(
 
     # ---- Plot altitude and velocity (skip IMU-only sources) ----
     for key, df in sorted(datasets.items()):
-        # Altus Metrum loggers other than the primary TeleMega (altusmetrum_<sn>)
-        extra_altus = key.startswith(("altusmetrum_", "telemega_"))
-        if key not in _PLOT_SOURCES and not extra_altus:
+        label = _plot_label(key)
+        if label is None:
             continue
         t = _num(df, "t_flight_s")
         alt = _num(df, "alt_agl_m")
@@ -257,9 +270,6 @@ def plot_flight(
         if alt.dropna().empty and vel.dropna().empty:
             continue
         color = _SOURCE_COLOR.get(key, "gray")
-        label = _SOURCE_LABEL.get(key, key)
-        if extra_altus:
-            label = f"Altus Metrum s/n {key.rsplit('_', 2)[-2]}"
         mask = t.notna() & (t >= -10)
 
         ax_alt.plot(t[mask], alt[mask], color=color, lw=1.5, label=label, zorder=3)

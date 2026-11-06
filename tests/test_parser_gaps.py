@@ -103,3 +103,13 @@ def test_blueraven_summary_fills_meta(tmp_path):
         assert meta["device"]["firmware"] == "abc1234 01/02/2024 03:04:05"
         assert "raw/src/TEST RKT_summary_x.csv" in [f["path"] for f in meta["input_files"]]
     assert not (flight / "interim" / "blueraven_summary_std.csv").exists()
+
+
+def test_plot_labels():
+    from pfa.analyze import _plot_label
+
+    assert _plot_label("telemega_std") == "TeleMega"
+    assert _plot_label("blueraven_std") == "Blue Raven"
+    assert _plot_label("altusmetrum_5115_std") == "Altus Metrum s/n 5115"
+    assert _plot_label("telemega_7000_std") == "Altus Metrum s/n 7000"
+    assert _plot_label("blueraven_hr_std") is None  # IMU only, not on the alt/vel panels
