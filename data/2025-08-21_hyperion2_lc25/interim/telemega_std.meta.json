@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-06-13T04:48:22Z",
+  "generated_at_utc": "2026-11-06T05:02:05Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.1",
   "device": {
@@ -9,7 +9,7 @@
   },
   "input_files": [
     {
-      "path": "data\\2025-08-21_hyperion2_lc25\\raw\\2025-08-21_redundant_telemega.csv",
+      "path": "raw/2025-08-21_redundant_telemega.csv",
       "sha256": "7eef7858a131517261a197143f0e54766f839aa09b144c3ca69fd81fe9968366"
     }
   ],

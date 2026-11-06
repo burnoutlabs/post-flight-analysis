@@ -24,9 +24,20 @@ def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
 
+def write_csv(df: pd.DataFrame, out_csv: Path) -> None:
+    """Write an interim CSV with LF line endings on every OS."""
+    df.to_csv(out_csv, index=False, lineterminator="\n")
+
+
+def _portable_path(p: Path, base_dir: Path) -> str:
+    """Path of ``p`` relative to ``base_dir``, with forward slashes on every OS."""
+    return Path(p).resolve().relative_to(Path(base_dir).resolve()).as_posix()
+
+
 def write_meta(
     out_json: Path,
     *,
+    base_dir: Path,
     input_files: Iterable[Path],
     device: str,
     serial: Optional[str],
@@ -43,7 +54,8 @@ def write_meta(
         "schema_version": SCHEMA_VERSION,
         "device": {"type": device, "serial": serial, "firmware": firmware},
         "input_files": [
-            {"path": str(p), "sha256": sha256_file(p)} for p in input_files
+            {"path": _portable_path(p, base_dir), "sha256": sha256_file(p)}
+            for p in input_files
         ],
         "mapping_used": mapping_used,
         "units_converted": list(units_converted),
@@ -52,7 +64,8 @@ def write_meta(
     }
     if extra:
         payload.update(extra)
-    out_json.write_text(json.dumps(payload, indent=2))
+    with out_json.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps(payload, indent=2))
 
 
 def local_to_utc(dt_str: str, tz_name: str) -> float:

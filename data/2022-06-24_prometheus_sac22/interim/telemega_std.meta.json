@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-06-13T04:48:10Z",
+  "generated_at_utc": "2026-11-06T05:02:04Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.1",
   "device": {
@@ -9,7 +9,7 @@
   },
   "input_files": [
     {
-      "path": "data\\2022-06-24_prometheus_sac22\\raw\\2022-06-24-serial-6583-flight-0003.csv",
+      "path": "raw/2022-06-24-serial-6583-flight-0003.csv",
       "sha256": "3d800387b2a00e8235320470ff0806a27806aa8e8cd24ebd66ef886332502364"
     }
   ],

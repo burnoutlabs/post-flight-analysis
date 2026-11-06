@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-06-13T04:48:16Z",
+  "generated_at_utc": "2026-11-06T05:02:05Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.1",
   "device": {
@@ -9,7 +9,7 @@
   },
   "input_files": [
     {
-      "path": "data\\2024-06-21_hyperion1_sac24\\raw\\2024-06-21-serial-6583-flight-0004.csv",
+      "path": "raw/2024-06-21-serial-6583-flight-0004.csv",
       "sha256": "cc5b7d65e5e122ff2bf9cba4357a1f2ccf07f58333e9833d0a1912dbf55e5354"
     }
   ],

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-06-13T04:48:23Z",
+  "generated_at_utc": "2026-11-06T05:02:06Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.1",
   "device": {
@@ -9,7 +9,7 @@
   },
   "input_files": [
     {
-      "path": "data\\2025-08-21_hyperion2_lc25\\raw\\2025-08-21_primary_blueraven.csv",
+      "path": "raw/2025-08-21_primary_blueraven.csv",
       "sha256": "6a2175a48937294c54d9fa28da123ff2233b75cc3211ac309b03c6bf2f9460af"
     }
   ],

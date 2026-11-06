@@ -1,0 +1,7 @@
+# Raw device logs are stored and checked out byte-for-byte, so the sha256
+# recorded in interim/*.meta.json is the same on every OS.
+data/**/raw/** -text
+
+# Generated outputs are written with LF on every OS; keep them LF on checkout
+# so a rerun of `pfa preprocess` on Windows does not show every line changed.
+data/**/interim/** text eol=lf
