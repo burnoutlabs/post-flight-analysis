@@ -1,0 +1,5 @@
+# Script outputs and staged inputs; rerun the scripts to regenerate them.
+*.csv
+*.json
+*.png
+*.txt

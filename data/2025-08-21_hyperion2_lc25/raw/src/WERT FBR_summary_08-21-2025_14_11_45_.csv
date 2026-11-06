@@ -1,0 +1,48 @@
+Rocket Name,WERT FBR
+Firmware,09afed1 11/05/2024 16:55:57
+Serial number,SN628 WERT FBR
+Max Altitude,0.00 feet
+Max velocity,38.44 feet/sec
+Pad altitude ASL,966.35 feet
+Launch date,21-Aug-25
+Launch time,14:11:45.868
+Time to first burnout,0.0 sec
+Time to Apo channel fire,0.0 sec
+Time to gyro overload,0.0 sec
+Time to third channel fire,0.0 sec
+Time to main channel fire,0.0 sec
+Time to fourth channel fire,0.0 sec
+Launch rod angle,4.5 deg
+Tilt angle at burnout,0.0 deg
+Roll rate at burnout,0.0 deg/sec
+Thrust tilt efficiency,0.00%
+Number of ascent rolls,0.000
+Horiz. velocity at apogee,0.0 feet/sec
+Inertial navigation max alt,0.0 feet
+Max motor burn acceleration,9.3 Gs
+Peak drag deceleration,0.0 Gs
+Apo channel max accel,0.0 Gs
+Main channel max accel,0.0 Gs
+3rd channel max accel,0.0 Gs
+4th channel max accel,0.0 Gs
+Max landing accel,0.0 Gs
+Drogue descent rate,0.0 feet/sec
+Main chute deploy altitude,0.0 feet
+Main chute descent rate,0.0 feet
+Landing Time,14:34:59.465
+Temperature on pad,94.2 F
+Max Temperature,94.2 F
+Min Temperature,94.23 F
+Battery voltage on pad,4.09 V
+Min Battery voltage,4.09 V
+Battery voltage at landing,3.7 V
+Build date,05-Nov-24
+Build time,16:55:57.000
+Flight number,17
+Direction of 1st motion,-0.0034,-0.9995,0.0305
+Gravity direction on pad,-0.0653,-0.9977,-0.0191
+Low-G accel pad offset,-0.0000,-0.0002,-0.0000
+Hi-G accel pad offset,0.90,0.73,0.58
+Pad gyro rates (deg/sec),-0.47,0.56,-0.17
+Pad Hi-G accel,0.83,-0.27,0.56
+Pad Low-G Accel,-0.07,-1.00,-0.02
