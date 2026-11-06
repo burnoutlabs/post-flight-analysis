@@ -131,8 +131,16 @@ def parse_telemega_csv(path: Path) -> Tuple[pd.DataFrame, Dict]:
         out["a_up_mps2"] = pd.to_numeric(df["accel_z"], errors="coerce")
         mapping_used["accel_z"] = "a_up_mps2"
 
-    t_flight, method = _infer_t_flight(out)
-    out["t_flight_s"] = t_flight
+    # AltOS logs `time` as seconds since launch. Use it directly: the GPS
+    # clock behind t_epoch_s is only for absolute time.
+    vendor_time = pd.to_numeric(df["time"], errors="coerce") if "time" in df.columns else None
+    if vendor_time is not None and vendor_time.notna().any():
+        out["t_flight_s"] = vendor_time
+        mapping_used["time"] = "t_flight_s"
+        method = "vendor_time"
+    else:
+        t_flight, method = _infer_t_flight(out)
+        out["t_flight_s"] = t_flight
 
     serial = str(df["serial"].iloc[0]) if "serial" in df.columns else None
     fw = str(df["version"].iloc[0]) if "version" in df.columns else None
