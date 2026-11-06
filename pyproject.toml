@@ -32,6 +32,8 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+# Exploratory scripts kept as they were written; not part of the package.
+extend-exclude = ["notebooks/playground"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
