@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-06-13T04:48:30Z",
+  "generated_at_utc": "2026-11-06T05:02:06Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.1",
   "device": {
@@ -9,7 +9,7 @@
   },
   "input_files": [
     {
-      "path": "data\\2025-08-21_hyperion2_lc25\\raw\\src\\WERT FBR HR_08-21-2025_14_11_45.csv",
+      "path": "raw/src/WERT FBR HR_08-21-2025_14_11_45.csv",
       "sha256": "397dc62ac0d8f12d06d23238319b6aa13bd921c4e7e0d511bb012b69dec45300"
     }
   ],

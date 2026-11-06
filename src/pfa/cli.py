@@ -3,7 +3,7 @@ from pathlib import Path
 
 import typer
 
-from .common import PreprocessOptions, ensure_dir, write_meta
+from .common import PreprocessOptions, ensure_dir, write_csv, write_meta
 from .parsers import (
     parse_telemega_csv,
     parse_blueraven_csv,
@@ -125,10 +125,11 @@ def preprocess(
             typer.echo("Parsing TeleMega...")
         df, meta = parse_telemega_csv(tele_file)
         out_csv = interim / "telemega_std.csv"
-        df.to_csv(out_csv, index=False)
+        write_csv(df, out_csv)
         gps_valid = int(df["lat_deg"].notna().sum()) if "lat_deg" in df.columns else 0
         write_meta(
             interim / "telemega_std.meta.json",
+            base_dir=fpath,
             input_files=[tele_file],
             device="telemega",
             serial=meta.get("serial"),
@@ -153,10 +154,11 @@ def preprocess(
             typer.echo("Parsing Blue Raven altimeter...")
         df, meta = parse_blueraven_csv(br_file, tz_name=opts.tz_name)
         out_csv = interim / "blueraven_std.csv"
-        df.to_csv(out_csv, index=False)
+        write_csv(df, out_csv)
         gps_valid = int(df["lat_deg"].notna().sum()) if "lat_deg" in df.columns else 0
         write_meta(
             interim / "blueraven_std.meta.json",
+            base_dir=fpath,
             input_files=[br_file],
             device="blueraven",
             serial=meta.get("serial"),
@@ -181,10 +183,11 @@ def preprocess(
             typer.echo("Parsing FeatherWeight GPS tracker...")
         df, meta = parse_featherweight(fw_file)
         out_csv = interim / "featherweight_std.csv"
-        df.to_csv(out_csv, index=False)
+        write_csv(df, out_csv)
         gps_valid = int(df["lat_deg"].notna().sum()) if "lat_deg" in df.columns else 0
         write_meta(
             interim / "featherweight_std.meta.json",
+            base_dir=fpath,
             input_files=[fw_file],
             device="featherweight",
             serial=meta.get("serial"),
@@ -205,9 +208,10 @@ def preprocess(
             typer.echo("Parsing Blue Raven HR IMU...")
         df, meta = parse_blueraven_hr_csv(br_hr_file, tz_name=opts.tz_name)
         out_csv = interim / "blueraven_hr_std.csv"
-        df.to_csv(out_csv, index=False)
+        write_csv(df, out_csv)
         write_meta(
             interim / "blueraven_hr_std.meta.json",
+            base_dir=fpath,
             input_files=[br_hr_file],
             device="blueraven_hr",
             serial=meta.get("serial"),
