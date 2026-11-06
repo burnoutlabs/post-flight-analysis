@@ -246,7 +246,9 @@ def plot_flight(
 
     # ---- Plot altitude and velocity (skip IMU-only sources) ----
     for key, df in sorted(datasets.items()):
-        if key not in _PLOT_SOURCES:
+        # Altus Metrum loggers other than the primary TeleMega (altusmetrum_<sn>)
+        extra_altus = key.startswith(("altusmetrum_", "telemega_"))
+        if key not in _PLOT_SOURCES and not extra_altus:
             continue
         t = _num(df, "t_flight_s")
         alt = _num(df, "alt_agl_m")
@@ -256,6 +258,8 @@ def plot_flight(
             continue
         color = _SOURCE_COLOR.get(key, "gray")
         label = _SOURCE_LABEL.get(key, key)
+        if extra_altus:
+            label = f"Altus Metrum s/n {key.rsplit('_', 2)[-2]}"
         mask = t.notna() & (t >= -10)
 
         ax_alt.plot(t[mask], alt[mask], color=color, lw=1.5, label=label, zorder=3)
