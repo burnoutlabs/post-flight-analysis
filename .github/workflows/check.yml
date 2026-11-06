@@ -1,0 +1,79 @@
+# Calls the `just` recipes so CI and local share one gate definition.
+#
+# Tests run on Linux and Windows: the data was first produced on Windows, and
+# the golden tests check that `pfa preprocess` reproduces the committed
+# interim files byte-for-byte on both.
+#
+# No path filter: tests/test_schema.py reads docs/schema.md, so a docs-only
+# change still has to run the tests.
+#
+# Branch protection: require ONLY the `ok` context.
+
+name: Check
+
+# pull_request has no branch filter so stacked PRs (based on another
+# branch, not main) are checked too.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Setup
+        run: just setup
+
+      - name: Check (fmt + lint)
+        run: just check
+
+  test:
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup
+        run: just setup
+
+      - name: Test
+        run: just test
+
+  # The ONLY job required by branch protection. Add every job to `needs:`.
+  ok:
+    name: ok
+    if: always()
+    needs: [check, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless every upstream job succeeded
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
+      - name: Pass
+        run: echo 'All checks passed'
