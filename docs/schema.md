@@ -34,7 +34,7 @@ to the version and fails if the columns change without a bump.
 
 | Column | Unit | Devices | Meaning |
 | --- | --- | --- | --- |
-| `t_epoch_s` | s | all | Absolute time, Unix epoch. Altus Metrum: GPS date/time columns plus the log's `time` column, so it is not a clean UTC clock. BR, BR HR: local date/time converted to UTC with `--tz`. FW: device date/time, UTC only if the device clock was set to UTC |
+| `t_epoch_s` | s | all | Absolute time, Unix epoch. Altus Metrum: the log's `time` column mapped onto the GPS clock by one offset, taken where the GPS second ticks over, so it is UTC to within a sample or so. BR, BR HR: local date/time converted to UTC with `--tz`. FW: device date/time, UTC only if the device clock was set to UTC |
 | `t_flight_s` | s | all | Time since liftoff; negative before it. Altus Metrum: the log's `time` column. BR: from the first `Liftoff` row. BR HR: `Flight_Time_(s)`. FW: from the first row with vertical speed above 20 ft/s |
 | `source` | — | all | Parser that produced the row: `telemega`, `altusmetrum`, `blueraven`, `blueraven_hr`, `featherweight` |
 | `state` | — | Altus Metrum | Flight state name from the log (`boost`, `fast`, `coast`, `drogue`, `main`, `landed`, ...) |

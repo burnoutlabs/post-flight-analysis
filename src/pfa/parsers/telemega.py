@@ -31,26 +31,39 @@ COLUMN_MAP = {
 }
 
 
-def _compose_epoch_seconds(row: pd.Series) -> float:
-    """Use discrete Y/M/D/H/M/S and fractional 'time' to build epoch seconds."""
-    from datetime import datetime, timedelta, timezone
+_GPS_CLOCK = ["year", "month", "day", "hour", "minute", "second"]
 
-    dt = datetime(
-        int(row["year"]),
-        int(row["month"]),
-        int(row["day"]),
-        int(row["hour"]),
-        int(row["minute"]),
-        int(row["second"]),
-        tzinfo=timezone.utc,
-    )
-    if "time" in row and pd.notna(row["time"]):
-        try:
-            offset = float(row["time"])
-        except Exception:
-            offset = 0.0
-        dt = dt + timedelta(seconds=offset)
-    return dt.timestamp()
+
+def _gps_clock_seconds(df: pd.DataFrame) -> pd.Series:
+    """Epoch seconds (UTC) from the whole-second GPS clock fields; NaN where unset."""
+    parts = df[_GPS_CLOCK].apply(pd.to_numeric, errors="coerce")
+    stamps = pd.to_datetime(parts, utc=True, errors="coerce")
+    return (stamps - pd.Timestamp("1970-01-01", tz="UTC")).dt.total_seconds()
+
+
+def _compose_epoch_seconds(df: pd.DataFrame) -> pd.Series:
+    """Build ``t_epoch_s`` from one clock: GPS for the absolute time, ``time`` for the rest.
+
+    The GPS clock fields already advance with each row, and AltOS logs ``time``
+    as seconds since launch, so the two must not be added row by row. Instead
+    one offset maps ``time`` onto the GPS clock. It is taken at the rows where
+    the GPS second ticks over, where that clock is closest to exact, and the
+    median of those keeps one bad fix from moving it. Every row's epoch is then
+    that offset plus its own ``time``.
+    """
+    gps = _gps_clock_seconds(df)
+    vendor_time = pd.to_numeric(df["time"], errors="coerce") if "time" in df.columns else None
+    if vendor_time is None or vendor_time.isna().all():
+        return gps
+
+    both = gps.notna() & vendor_time.notna()
+    if not both.any():
+        return pd.Series(float("nan"), index=df.index)
+
+    offsets = (gps - vendor_time)[both]
+    ticks = gps[both].diff() > 0
+    offset = offsets[ticks].median() if ticks.any() else offsets.iloc[0]
+    return offset + vendor_time
 
 
 def _infer_t_flight(df: pd.DataFrame) -> Tuple[pd.Series, str]:
@@ -100,9 +113,8 @@ def parse_telemega_csv(path: Path, *, source: str = "telemega") -> Tuple[pd.Data
     out = pd.DataFrame()
     mapping_used: Dict[str, str] = {}
 
-    required_time = {"year", "month", "day", "hour", "minute", "second"}
-    if required_time.issubset(set(df.columns)):
-        out["t_epoch_s"] = df.apply(_compose_epoch_seconds, axis=1)
+    if set(_GPS_CLOCK).issubset(set(df.columns)):
+        out["t_epoch_s"] = _compose_epoch_seconds(df)
     else:
         out["t_epoch_s"] = pd.NA
 
