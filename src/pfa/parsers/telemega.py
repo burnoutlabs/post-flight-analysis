@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import re
 from pathlib import Path
 from typing import Dict, Tuple
@@ -32,7 +33,7 @@ COLUMN_MAP = {
 
 def _compose_epoch_seconds(row: pd.Series) -> float:
     """Use discrete Y/M/D/H/M/S and fractional 'time' to build epoch seconds."""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     dt = datetime(
         int(row["year"]),
@@ -56,18 +57,12 @@ def _infer_t_flight(df: pd.DataFrame) -> Tuple[pd.Series, str]:
     """Liftoff from state if available, else acceleration threshold."""
     liftoff_idx = None
     if "state" in df.columns:
-        state_series = (
-            df.get("state", pd.Series(index=df.index, dtype=str))
-            .astype(str)
-            .str.lower()
-        )
+        state_series = df.get("state", pd.Series(index=df.index, dtype=str)).astype(str).str.lower()
         matches = state_series.isin(["boost", "fast"])
         if matches.any():
             liftoff_idx = df.index[matches].min()
 
-    method = (
-        "event" if liftoff_idx is not None and pd.notna(liftoff_idx) else "threshold"
-    )
+    method = "event" if liftoff_idx is not None and pd.notna(liftoff_idx) else "threshold"
 
     if liftoff_idx is None or pd.isna(liftoff_idx):
         accel_series = df.get("a_up_mps2", pd.Series(index=df.index, dtype=float))
