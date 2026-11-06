@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+# Bump whenever STANDARD_COLUMNS changes (names, order, units or meaning);
+# see docs/schema.md.
+SCHEMA_VERSION = "gfr-0.2"
+
 STANDARD_COLUMNS = [
     "t_epoch_s",
     "t_flight_s",
@@ -66,7 +70,7 @@ def finalize(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
             df[c] = pd.NA
     # Assign constants
     df["source"] = source_name
-    df["schema_version"] = "gfr-0.1"
+    df["schema_version"] = SCHEMA_VERSION
     # Order and drop duplicates
     df = df[STANDARD_COLUMNS]
     df = df.sort_values("t_epoch_s", kind="mergesort").drop_duplicates(subset=["t_epoch_s"])
