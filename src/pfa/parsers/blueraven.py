@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -28,9 +29,7 @@ def parse_blueraven_csv(path: Path, *, tz_name: str) -> Tuple[pd.DataFrame, Dict
         )
         mapping_used["Baro_Altitude_ASL_(feet)"] = "alt_baro_m_msl"
     if "Baro_Altitude_AGL_(feet)" in df.columns:
-        out["alt_agl_m"] = feet_to_m(
-            pd.to_numeric(df["Baro_Altitude_AGL_(feet)"], errors="coerce")
-        )
+        out["alt_agl_m"] = feet_to_m(pd.to_numeric(df["Baro_Altitude_AGL_(feet)"], errors="coerce"))
         mapping_used["Baro_Altitude_AGL_(feet)"] = "alt_agl_m"
 
     if "Velocity_Up" in df.columns:
@@ -44,19 +43,13 @@ def parse_blueraven_csv(path: Path, *, tz_name: str) -> Tuple[pd.DataFrame, Dict
         mapping_used["Velocity_CR"] = "v_cr_mps"
 
     if "Inertial_Altitude" in df.columns:
-        out["alt_inertial_m"] = feet_to_m(
-            pd.to_numeric(df["Inertial_Altitude"], errors="coerce")
-        )
+        out["alt_inertial_m"] = feet_to_m(pd.to_numeric(df["Inertial_Altitude"], errors="coerce"))
         mapping_used["Inertial_Altitude"] = "alt_inertial_m"
     if "Inertial_DR_Position" in df.columns:
-        out["pos_dr_m"] = feet_to_m(
-            pd.to_numeric(df["Inertial_DR_Position"], errors="coerce")
-        )
+        out["pos_dr_m"] = feet_to_m(pd.to_numeric(df["Inertial_DR_Position"], errors="coerce"))
         mapping_used["Inertial_DR_Position"] = "pos_dr_m"
     if "Inertial_CR_position" in df.columns:
-        out["pos_cr_m"] = feet_to_m(
-            pd.to_numeric(df["Inertial_CR_position"], errors="coerce")
-        )
+        out["pos_cr_m"] = feet_to_m(pd.to_numeric(df["Inertial_CR_position"], errors="coerce"))
         mapping_used["Inertial_CR_position"] = "pos_cr_m"
 
     for vendor, std in [
@@ -99,9 +92,7 @@ def parse_blueraven_csv(path: Path, *, tz_name: str) -> Tuple[pd.DataFrame, Dict
     }
     for vendor, std in flag_cols.items():
         if vendor in df.columns:
-            out[std] = (
-                pd.to_numeric(df[vendor], errors="coerce").fillna(0) != 0
-            ).astype(int)
+            out[std] = (pd.to_numeric(df[vendor], errors="coerce").fillna(0) != 0).astype(int)
             mapping_used[vendor] = std
 
     # Compute horizontal speed
@@ -120,7 +111,9 @@ def parse_blueraven_csv(path: Path, *, tz_name: str) -> Tuple[pd.DataFrame, Dict
             t0_raw = out["t_epoch_s"].iloc[liftoff_iloc] if "t_epoch_s" in out.columns else None
             t0 = pd.to_numeric(pd.Series([t0_raw]), errors="coerce").iloc[0]
             if pd.notna(t0):
-                t_epoch_num = pd.to_numeric(out.get("t_epoch_s", pd.Series(dtype=float)), errors="coerce")
+                t_epoch_num = pd.to_numeric(
+                    out.get("t_epoch_s", pd.Series(dtype=float)), errors="coerce"
+                )
                 out["t_flight_s"] = t_epoch_num - float(t0)
                 liftoff_method = "event"
     if "t_flight_s" not in out.columns:

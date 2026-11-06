@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 from pathlib import Path
 
 import typer
 
 from .common import PreprocessOptions, ensure_dir, write_csv, write_meta
 from .parsers import (
-    parse_telemega_csv,
     parse_blueraven_csv,
     parse_blueraven_hr_csv,
     parse_featherweight,
+    parse_telemega_csv,
 )
 
 app = typer.Typer(add_completion=False)
@@ -55,12 +56,11 @@ def _sniff_kind(p: Path) -> str | None:
     if suffix == ".xlsx":
         try:
             import openpyxl
+
             wb = openpyxl.load_workbook(p, read_only=True, data_only=True)
             ws = wb.active
             first_row = next(ws.iter_rows(max_row=1, values_only=True), ())
-            hlow = ",".join(
-                str(c).lower().strip() for c in first_row if c is not None
-            )
+            hlow = ",".join(str(c).lower().strip() for c in first_row if c is not None)
             if "tracker lat" in hlow and "tracker lon" in hlow:
                 return "featherweight"
         except Exception:
@@ -98,9 +98,7 @@ def _find_files(raw: Path, verbose: bool) -> dict[str, Path]:
 @app.command()
 def preprocess(
     flight_dir: str = typer.Argument(..., help="Path to data/<date>_<vehicle>_<event>"),
-    tz: str = typer.Option(
-        "America/Toronto", "--tz", help="Local time zone for Blue Raven logs"
-    ),
+    tz: str = typer.Option("America/Toronto", "--tz", help="Local time zone for Blue Raven logs"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging"),
 ) -> None:
     fpath = Path(flight_dir)
@@ -242,6 +240,7 @@ def analyze(
     Saves figures to <flight_dir>/figures/.
     """
     import math
+
     from .analyze import analyze_flight
 
     fpath = Path(flight_dir)
@@ -256,9 +255,14 @@ def analyze(
 
     typer.echo(f"\n=== {summary['flight']} ===")
     typer.echo(f"  Sources:          {', '.join(summary['sources'])}")
-    typer.echo(f"  Apogee AGL:       {_fmt(summary['apogee_m'])} m  ({_fmt(summary['apogee_ft'])} ft)")
+    typer.echo(
+        f"  Apogee AGL:       {_fmt(summary['apogee_m'])} m  ({_fmt(summary['apogee_ft'])} ft)"
+    )
     typer.echo(f"  Time to apogee:   {_fmt(summary['time_to_apogee_s'], '.1f')} s")
-    typer.echo(f"  Max velocity:     {_fmt(summary['max_velocity_mps'])} m/s  ({_fmt(summary['max_velocity_fps'])} ft/s)")
+    typer.echo(
+        f"  Max velocity:     {_fmt(summary['max_velocity_mps'])} m/s  "
+        f"({_fmt(summary['max_velocity_fps'])} ft/s)"
+    )
     typer.echo(f"  Max acceleration: {_fmt(summary['max_accel_g'], '.1f')} G")
     if not math.isnan(summary["burn_time_s"]):
         typer.echo(f"  Motor burn time:  {_fmt(summary['burn_time_s'], '.2f')} s")
@@ -276,13 +280,11 @@ def compare(
     Does not regenerate figures.
     """
     import math
+
     from .analyze import _load_interim, compute_summary
 
     data_path = Path(data_dir)
-    flight_dirs = sorted(
-        p for p in data_path.iterdir()
-        if p.is_dir() and (p / "interim").exists()
-    )
+    flight_dirs = sorted(p for p in data_path.iterdir() if p.is_dir() and (p / "interim").exists())
 
     if not flight_dirs:
         typer.echo(f"No preprocessed flights found under {data_path}")
@@ -338,4 +340,3 @@ def compare(
             f"{src_str}"
         )
     typer.echo("")
-

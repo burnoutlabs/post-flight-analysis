@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import hashlib
 import json
 from dataclasses import dataclass
@@ -7,7 +8,8 @@ from pathlib import Path
 from typing import Dict, Iterable, Optional
 
 import pandas as pd
-from dateutil import tz, parser as dtparser
+from dateutil import parser as dtparser
+from dateutil import tz
 
 SCHEMA_VERSION = "gfr-0.1"
 
@@ -54,8 +56,7 @@ def write_meta(
         "schema_version": SCHEMA_VERSION,
         "device": {"type": device, "serial": serial, "firmware": firmware},
         "input_files": [
-            {"path": _portable_path(p, base_dir), "sha256": sha256_file(p)}
-            for p in input_files
+            {"path": _portable_path(p, base_dir), "sha256": sha256_file(p)} for p in input_files
         ],
         "mapping_used": mapping_used,
         "units_converted": list(units_converted),

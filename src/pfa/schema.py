@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pandas as pd
 
 STANDARD_COLUMNS = [
@@ -68,7 +69,5 @@ def finalize(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
     df["schema_version"] = "gfr-0.1"
     # Order and drop duplicates
     df = df[STANDARD_COLUMNS]
-    df = df.sort_values("t_epoch_s", kind="mergesort").drop_duplicates(
-        subset=["t_epoch_s"]
-    )
+    df = df.sort_values("t_epoch_s", kind="mergesort").drop_duplicates(subset=["t_epoch_s"])
     return df.reset_index(drop=True)

@@ -16,6 +16,7 @@ Key notes:
 - t_flight_s is anchored to the first row where VERTV > 20 ft/s (liftoff
   threshold), giving relative flight time independent of absolute clock.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -35,10 +36,12 @@ _LIFTOFF_VERTV_FT_S = 20.0  # ft/s threshold for liftoff detection
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_raw(path: Path) -> pd.DataFrame:
     """Load the raw data table regardless of file format."""
     if path.suffix.lower() == ".xlsx":
         import openpyxl
+
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
         ws = wb.active
         rows = list(ws.iter_rows(values_only=True))
@@ -89,6 +92,7 @@ def _to_epoch(date_val, time_val) -> float | None:
 # Public parser
 # ---------------------------------------------------------------------------
 
+
 def parse_featherweight(path: Path) -> Tuple[pd.DataFrame, Dict]:
     """
     Parse a FeatherWeight GPS tracker file (CSV or XLSX).
@@ -127,9 +131,7 @@ def parse_featherweight(path: Path) -> Tuple[pd.DataFrame, Dict]:
         vert_ft_s = pd.Series(dtype=float, index=raw.index)
 
     if "HORZV" in raw.columns:
-        out["speed_2d_mps"] = (
-            pd.to_numeric(raw["HORZV"], errors="coerce").abs() * _FPS_TO_MPS
-        )
+        out["speed_2d_mps"] = pd.to_numeric(raw["HORZV"], errors="coerce").abs() * _FPS_TO_MPS
         mapping_used["HORZV"] = "speed_2d_mps"
 
     # ---- Battery ----

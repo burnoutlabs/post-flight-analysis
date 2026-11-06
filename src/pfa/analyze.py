@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import pandas as pd
 
@@ -14,14 +14,14 @@ _G = 9.80665
 
 # Colours and labels for each data source
 _SOURCE_COLOR = {
-    "telemega_std":    "#1f77b4",
-    "blueraven_std":   "#ff7f0e",
+    "telemega_std": "#1f77b4",
+    "blueraven_std": "#ff7f0e",
     "featherweight_std": "#2ca02c",
     "blueraven_hr_std": "#9467bd",
 }
 _SOURCE_LABEL = {
-    "telemega_std":    "TeleMega",
-    "blueraven_std":   "Blue Raven",
+    "telemega_std": "TeleMega",
+    "blueraven_std": "Blue Raven",
     "featherweight_std": "FeatherWeight GPS",
     "blueraven_hr_std": "Blue Raven HR (IMU)",
 }
@@ -30,31 +30,32 @@ _PLOT_SOURCES = {"telemega_std", "blueraven_std", "featherweight_std"}
 
 # TeleMega state names to watch for event transitions
 _TM_EVENT_STATES = [
-    ("coast", "Burnout"),   # first "coast" or "fast" row marks motor burnout
-    ("fast",  "Burnout"),
+    ("coast", "Burnout"),  # first "coast" or "fast" row marks motor burnout
+    ("fast", "Burnout"),
     ("drogue", "Drogue"),
-    ("main",   "Main"),
+    ("main", "Main"),
     ("landed", "Landed"),
 ]
 # BlueRaven flag columns → event label (only if not already set by TeleMega)
 _BR_FLAG_EVENTS = [
     ("flag_burnout_coast", "Burnout"),
-    ("flag_apogee",        "Apogee"),
-    ("flag_apo_fired",     "Drogue"),
-    ("flag_main_fired",    "Main"),
+    ("flag_apogee", "Apogee"),
+    ("flag_apo_fired", "Drogue"),
+    ("flag_main_fired", "Main"),
 ]
 _EVENT_COLOR = {
     "Burnout": "#d62728",
-    "Apogee":  "#2ca02c",
-    "Drogue":  "#9467bd",
-    "Main":    "#8c564b",
-    "Landed":  "#7f7f7f",
+    "Apogee": "#2ca02c",
+    "Drogue": "#9467bd",
+    "Main": "#8c564b",
+    "Landed": "#7f7f7f",
 }
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_interim(interim: Path) -> Dict[str, pd.DataFrame]:
     """Load every *_std.csv from interim/ keyed by stem."""
@@ -83,18 +84,17 @@ def _velocity_for_plot(df: pd.DataFrame) -> pd.Series:
     v_up_mps is GPS-derived and mostly absent during the boost phase.
     """
     vel = _num(df, "v_up_mps")
-    t   = _num(df, "t_flight_s")
+    t = _num(df, "t_flight_s")
     in_flight = t >= 0
 
     vel_in_flight = vel[in_flight]
-    if (vel_in_flight.notna().mean() > 0.5
-            and float(vel_in_flight.max()) > 50.0):
+    if vel_in_flight.notna().mean() > 0.5 and float(vel_in_flight.max()) > 50.0:
         return vel
 
     # Smoothed finite-difference of baro altitude
     alt = _num(df, "alt_agl_m")
-    dt  = t.diff()
-    dh  = alt.diff()
+    dt = t.diff()
+    dh = alt.diff()
     v_baro = (dh / dt).where((dt > 0.001) & (dt < 0.5))
     return v_baro.rolling(31, center=True, min_periods=10).mean()
 
@@ -135,9 +135,10 @@ def _detect_events(df: pd.DataFrame) -> Dict[str, float]:
 # Public summary computation
 # ---------------------------------------------------------------------------
 
+
 def compute_summary(df: pd.DataFrame) -> Dict:
     """Compute key flight metrics from a standardised DataFrame."""
-    t   = _num(df, "t_flight_s")
+    t = _num(df, "t_flight_s")
     alt = _num(df, "alt_agl_m")
     vel = _num(df, "v_up_mps")
     acc = _num(df, "a_up_mps2")
@@ -150,24 +151,21 @@ def compute_summary(df: pd.DataFrame) -> Dict:
     # Apogee
     valid_alt = _where(alt)
     apogee_idx = valid_alt.idxmax() if valid_alt.notna().any() else None
-    apogee_m   = float(valid_alt[apogee_idx]) if apogee_idx is not None else float("nan")
-    apogee_t   = float(t[apogee_idx])         if apogee_idx is not None else float("nan")
+    apogee_m = float(valid_alt[apogee_idx]) if apogee_idx is not None else float("nan")
+    apogee_t = float(t[apogee_idx]) if apogee_idx is not None else float("nan")
 
     # Max velocity — use direct measurement if reliable, else integrate accel.
     # TeleMega v_up_mps is GPS-derived and mostly absent during boost;
     # integrating a_up_mps2 from t=0 gives a better estimate in that case.
     valid_vel = vel.where(in_flight)
-    vel_reliable = (
-        valid_vel.notna().mean() > 0.5
-        and float(valid_vel.max()) > 50.0
-    )
+    vel_reliable = valid_vel.notna().mean() > 0.5 and float(valid_vel.max()) > 50.0
     if vel_reliable:
         max_vel = float(valid_vel.max())
     else:
         valid_acc = _where(acc)
         if valid_acc.notna().any():
-            t_f  = t[in_flight].reset_index(drop=True)
-            a_f  = valid_acc[in_flight].reset_index(drop=True)
+            t_f = t[in_flight].reset_index(drop=True)
+            a_f = valid_acc[in_flight].reset_index(drop=True)
             dt_f = t_f.diff().fillna(0).clip(upper=0.5)
             v_int = (a_f * dt_f).cumsum()
             max_vel = float(v_int.max()) if v_int.notna().any() else float("nan")
@@ -187,19 +185,20 @@ def compute_summary(df: pd.DataFrame) -> Dict:
             burn_t = float(t[in_boost].max())
 
     return {
-        "apogee_m":           apogee_m,
-        "apogee_ft":          apogee_m * _M_TO_FT,
-        "time_to_apogee_s":   apogee_t,
-        "max_velocity_mps":   max_vel,
-        "max_velocity_fps":   max_vel * _MPS_TO_FPS,
-        "max_accel_g":        max_acc_g,
-        "burn_time_s":        burn_t,
+        "apogee_m": apogee_m,
+        "apogee_ft": apogee_m * _M_TO_FT,
+        "time_to_apogee_s": apogee_t,
+        "max_velocity_mps": max_vel,
+        "max_velocity_fps": max_vel * _MPS_TO_FPS,
+        "max_accel_g": max_acc_g,
+        "burn_time_s": burn_t,
     }
 
 
 # ---------------------------------------------------------------------------
 # Plot generation
 # ---------------------------------------------------------------------------
+
 
 def plot_flight(
     datasets: Dict[str, pd.DataFrame],
@@ -212,20 +211,21 @@ def plot_flight(
     Returns list of saved paths.
     """
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     # Acceleration panel only when TeleMega data is present (has a_up_mps2)
     has_accel = (
-        "telemega_std" in datasets
-        and _num(datasets["telemega_std"], "a_up_mps2").notna().any()
+        "telemega_std" in datasets and _num(datasets["telemega_std"], "a_up_mps2").notna().any()
     )
     n_panels = 3 if has_accel else 2
     heights = [2.5] * n_panels
     heights[0] = 3.0  # a bit more room for altitude
 
     fig, axes = plt.subplots(
-        n_panels, 1,
+        n_panels,
+        1,
         figsize=(11, sum(heights) + 0.5 * (n_panels - 1)),
         gridspec_kw={"height_ratios": heights},
         sharex=True,
@@ -248,7 +248,7 @@ def plot_flight(
     for key, df in sorted(datasets.items()):
         if key not in _PLOT_SOURCES:
             continue
-        t   = _num(df, "t_flight_s")
+        t = _num(df, "t_flight_s")
         alt = _num(df, "alt_agl_m")
         vel = _velocity_for_plot(df)
         # Only draw if source has meaningful altitude or velocity data
@@ -256,31 +256,39 @@ def plot_flight(
             continue
         color = _SOURCE_COLOR.get(key, "gray")
         label = _SOURCE_LABEL.get(key, key)
-        mask  = t.notna() & (t >= -10)
+        mask = t.notna() & (t >= -10)
 
         ax_alt.plot(t[mask], alt[mask], color=color, lw=1.5, label=label, zorder=3)
         ax_vel.plot(t[mask], vel[mask], color=color, lw=1.5, label=label, zorder=3)
 
     if ax_acc is not None and "telemega_std" in datasets:
         df_tm = datasets["telemega_std"]
-        t   = _num(df_tm, "t_flight_s")
+        t = _num(df_tm, "t_flight_s")
         acc = _num(df_tm, "a_up_mps2")
         mask = t.notna() & (t >= -10)
         ax_acc.plot(
-            t[mask], acc[mask] / _G,
-            color=_SOURCE_COLOR["telemega_std"], lw=1.5, label="TeleMega", zorder=3,
+            t[mask],
+            acc[mask] / _G,
+            color=_SOURCE_COLOR["telemega_std"],
+            lw=1.5,
+            label="TeleMega",
+            zorder=3,
         )
         # BlueRaven HR: also carries a_up_mps2 (from Accel_Y * g)
         if "blueraven_hr_std" in datasets:
             df_hr = datasets["blueraven_hr_std"]
-            t_hr  = _num(df_hr, "t_flight_s")
+            t_hr = _num(df_hr, "t_flight_s")
             acc_hr = _num(df_hr, "a_up_mps2")
             mask_hr = t_hr.notna() & (t_hr >= -10) & acc_hr.notna()
             if mask_hr.any():
                 ax_acc.plot(
-                    t_hr[mask_hr], acc_hr[mask_hr] / _G,
-                    color=_SOURCE_COLOR["blueraven_hr_std"], lw=0.6, alpha=0.6,
-                    label="Blue Raven HR", zorder=2,
+                    t_hr[mask_hr],
+                    acc_hr[mask_hr] / _G,
+                    color=_SOURCE_COLOR["blueraven_hr_std"],
+                    lw=0.6,
+                    alpha=0.6,
+                    label="Blue Raven HR",
+                    zorder=2,
                 )
         ax_acc.axhline(0, color="k", lw=0.6, ls="--", zorder=2)
 
@@ -291,9 +299,15 @@ def plot_flight(
             ax.axvline(ev_t, color=ec, lw=1.0, ls="--", alpha=0.75, zorder=4)
         # Label at top of altitude panel using axes-coordinate y so it never clips
         ax_alt.text(
-            ev_t, 1.0, f" {ev_name}",
+            ev_t,
+            1.0,
+            f" {ev_name}",
             transform=ax_alt.get_xaxis_transform(),
-            color=ec, fontsize=7.5, va="top", ha="left", rotation=90,
+            color=ec,
+            fontsize=7.5,
+            va="top",
+            ha="left",
+            rotation=90,
             clip_on=False,
         )
 
@@ -339,6 +353,7 @@ def plot_flight(
 # Top-level entry point
 # ---------------------------------------------------------------------------
 
+
 def analyze_flight(flight_dir: Path, verbose: bool = False) -> Dict:
     """
     Load interim CSVs for a flight, compute summary metrics, and save plots.
@@ -365,7 +380,7 @@ def analyze_flight(flight_dir: Path, verbose: bool = False) -> Dict:
     if primary is None:
         primary = next(iter(datasets.values()))
     summary = compute_summary(primary)
-    summary["flight"]  = flight_dir.name
+    summary["flight"] = flight_dir.name
     summary["sources"] = list(datasets.keys())
 
     saved = plot_flight(datasets, flight_dir.name, figures_dir)
