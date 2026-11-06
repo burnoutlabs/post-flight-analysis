@@ -11,6 +11,7 @@ from .parsers import (
     parse_featherweight,
     parse_telemega_csv,
 )
+from .parsers.blueraven_summary import blueraven_identity
 
 app = typer.Typer(add_completion=False)
 
@@ -34,8 +35,28 @@ def _read_first_nonempty_line(p: Path) -> str:
     return ""
 
 
+def _altus_serial(p: Path) -> str | None:
+    """Serial number from the first data row of an Altus Metrum CSV."""
+    with p.open("rb") as f:
+        text = f.read(8192).decode("utf-8-sig", errors="ignore")
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return None
+    header = [c.strip().lstrip("#") for c in lines[0].split(",")]
+    row = [c.strip() for c in lines[1].split(",")]
+    if "serial" not in header:
+        return None
+    i = header.index("serial")
+    return row[i] if i < len(row) and row[i] else None
+
+
 def _sniff_kind(p: Path) -> str | None:
-    """Return kind string by inspecting the file header/content."""
+    """Return kind string by inspecting the file header/content.
+
+    Altus Metrum CSVs are split by their columns: logs with the IMU columns
+    (``accel_x``, ``gyro_roll``) are ``telemega``; other Altus Metrum loggers,
+    such as the 67-column log without them, are ``altusmetrum``.
+    """
     if not p.is_file():
         return None
     suffix = p.suffix.lower()
@@ -44,7 +65,12 @@ def _sniff_kind(p: Path) -> str | None:
         head = _read_first_nonempty_line(p)
         hlow = head.lower()
         if hlow.startswith("#version,serial,flight"):
-            return "telemega"
+            cols = {c.strip() for c in hlow.lstrip("#").split(",")}
+            if {"accel_x", "gyro_roll"} <= cols:
+                return "telemega"
+            return "altusmetrum"
+        if hlow.startswith("rocket name,"):
+            return "blueraven_summary"
         if "baro_altitude_asl_(feet)" in hlow or "baro_altitude_agl_(feet)" in hlow:
             return "blueraven"
         if "gyro_x" in hlow and "flight_time_(s)" in hlow:
@@ -70,29 +96,54 @@ def _sniff_kind(p: Path) -> str | None:
     return None
 
 
+_ALTUS_KINDS = ("telemega", "altusmetrum")
+
+
 def _find_files(raw: Path, verbose: bool) -> dict[str, Path]:
-    kinds: dict[str, Path] = {}
-    # Top-level raw/ has highest priority
-    for p in sorted(raw.glob("*")):
-        if p.is_dir():
-            continue
-        kind = _sniff_kind(p)
-        if kind:
-            if verbose:
-                typer.echo(f"Detected {kind} file: {p.name}")
-            kinds[kind] = p
-    # raw/src/ fills in any kinds not already found
-    src_dir = raw / "src"
-    if src_dir.is_dir():
-        for p in sorted(src_dir.glob("*")):
+    """Map output name -> input file.
+
+    Top-level raw/ has priority; raw/src/ fills in what is not already found.
+    For most kinds the name is the kind and only the first file is used.
+    Altus Metrum logs are keyed by serial number so that two loggers in one
+    flight both survive: the first TeleMega keeps the plain ``telemega`` name,
+    any other Altus Metrum log is ``<kind>_<serial>``. A second copy of a log
+    from the same serial is skipped.
+    """
+    found: dict[str, Path] = {}
+    altus_serials: set[tuple[str, str | None]] = set()
+
+    def _scan(directory: Path, where: str) -> None:
+        for p in sorted(directory.glob("*")):
             if p.is_dir():
                 continue
             kind = _sniff_kind(p)
-            if kind and kind not in kinds:
-                if verbose:
-                    typer.echo(f"Detected {kind} file (src/): {p.name}")
-                kinds[kind] = p
-    return kinds
+            if not kind:
+                continue
+            if kind in _ALTUS_KINDS:
+                serial = _altus_serial(p)
+                if (kind, serial) in altus_serials:
+                    continue
+                altus_serials.add((kind, serial))
+                key = kind if kind == "telemega" and kind not in found else f"{kind}_{serial}"
+            else:
+                key = kind
+            if key in found:
+                continue
+            if verbose:
+                typer.echo(f"Detected {kind} file{where}: {p.name}")
+            found[key] = p
+
+    _scan(raw, "")
+    if (raw / "src").is_dir():
+        _scan(raw / "src", " (src/)")
+    return found
+
+
+def _row_counts(df, meta: dict, *, gps: bool = True) -> dict:
+    gps_valid = int(df["lat_deg"].notna().sum()) if gps and "lat_deg" in df.columns else 0
+    return meta.get(
+        "row_counts", {"total": len(df), "after_clean": len(df), "gps_valid": gps_valid}
+    )
 
 
 @app.command()
@@ -110,121 +161,65 @@ def preprocess(
         typer.echo(f"Raw folder not found: {raw}")
         raise typer.Exit(code=1)
 
-    kinds = _find_files(raw, verbose)
-    if not kinds:
+    files = _find_files(raw, verbose)
+    if not files:
         typer.echo(f"No recognizable device files found in {raw}")
         raise typer.Exit(code=2)
 
     opts = PreprocessOptions(tz_name=tz)
 
-    tele_file = kinds.get("telemega")
-    if tele_file:
-        if verbose:
-            typer.echo("Parsing TeleMega...")
-        df, meta = parse_telemega_csv(tele_file)
-        out_csv = interim / "telemega_std.csv"
+    # The Blue Raven summary carries no samples, only the device identity.
+    summary_file = files.get("blueraven_summary")
+    br_identity = blueraven_identity(summary_file) if summary_file else {}
+
+    wrote_any = False
+    for key, path in files.items():
+        kind = _sniff_kind(path)
+        extra_inputs: list[Path] = []
+        gps = True
+        if kind in _ALTUS_KINDS:
+            if verbose:
+                typer.echo(f"Parsing {key} (Altus Metrum)...")
+            df, meta = parse_telemega_csv(path, source=kind)
+        elif kind == "blueraven":
+            if verbose:
+                typer.echo("Parsing Blue Raven altimeter...")
+            df, meta = parse_blueraven_csv(path, tz_name=opts.tz_name)
+        elif kind == "blueraven_hr":
+            if verbose:
+                typer.echo("Parsing Blue Raven HR IMU...")
+            df, meta = parse_blueraven_hr_csv(path, tz_name=opts.tz_name)
+            gps = False
+        elif kind == "featherweight":
+            if verbose:
+                typer.echo("Parsing FeatherWeight GPS tracker...")
+            df, meta = parse_featherweight(path)
+        else:
+            continue
+
+        if kind in ("blueraven", "blueraven_hr") and summary_file:
+            meta["serial"] = br_identity.get("serial")
+            meta["firmware"] = br_identity.get("firmware")
+            extra_inputs.append(summary_file)
+
+        out_csv = interim / f"{key}_std.csv"
         write_csv(df, out_csv)
-        gps_valid = int(df["lat_deg"].notna().sum()) if "lat_deg" in df.columns else 0
         write_meta(
-            interim / "telemega_std.meta.json",
+            interim / f"{key}_std.meta.json",
             base_dir=fpath,
-            input_files=[tele_file],
-            device="telemega",
+            input_files=[path, *extra_inputs],
+            device=kind,
             serial=meta.get("serial"),
             firmware=meta.get("firmware"),
             mapping_used=meta.get("mapping_used", {}),
             units_converted=meta.get("units_converted", []),
             liftoff_method=meta.get("liftoff_method", "unknown"),
-            row_counts=meta.get(
-                "row_counts",
-                {
-                    "total": len(df),
-                    "after_clean": len(df),
-                    "gps_valid": gps_valid,
-                },
-            ),
+            row_counts=_row_counts(df, meta, gps=gps),
         )
         typer.echo(f"Wrote {out_csv}")
+        wrote_any = True
 
-    br_file = kinds.get("blueraven")
-    if br_file:
-        if verbose:
-            typer.echo("Parsing Blue Raven altimeter...")
-        df, meta = parse_blueraven_csv(br_file, tz_name=opts.tz_name)
-        out_csv = interim / "blueraven_std.csv"
-        write_csv(df, out_csv)
-        gps_valid = int(df["lat_deg"].notna().sum()) if "lat_deg" in df.columns else 0
-        write_meta(
-            interim / "blueraven_std.meta.json",
-            base_dir=fpath,
-            input_files=[br_file],
-            device="blueraven",
-            serial=meta.get("serial"),
-            firmware=meta.get("firmware"),
-            mapping_used=meta.get("mapping_used", {}),
-            units_converted=meta.get("units_converted", []),
-            liftoff_method=meta.get("liftoff_method", "unknown"),
-            row_counts=meta.get(
-                "row_counts",
-                {
-                    "total": len(df),
-                    "after_clean": len(df),
-                    "gps_valid": gps_valid,
-                },
-            ),
-        )
-        typer.echo(f"Wrote {out_csv}")
-
-    fw_file = kinds.get("featherweight")
-    if fw_file:
-        if verbose:
-            typer.echo("Parsing FeatherWeight GPS tracker...")
-        df, meta = parse_featherweight(fw_file)
-        out_csv = interim / "featherweight_std.csv"
-        write_csv(df, out_csv)
-        gps_valid = int(df["lat_deg"].notna().sum()) if "lat_deg" in df.columns else 0
-        write_meta(
-            interim / "featherweight_std.meta.json",
-            base_dir=fpath,
-            input_files=[fw_file],
-            device="featherweight",
-            serial=meta.get("serial"),
-            firmware=meta.get("firmware"),
-            mapping_used=meta.get("mapping_used", {}),
-            units_converted=meta.get("units_converted", []),
-            liftoff_method=meta.get("liftoff_method", "unknown"),
-            row_counts=meta.get(
-                "row_counts",
-                {"total": len(df), "after_clean": len(df), "gps_valid": gps_valid},
-            ),
-        )
-        typer.echo(f"Wrote {out_csv}")
-
-    br_hr_file = kinds.get("blueraven_hr")
-    if br_hr_file:
-        if verbose:
-            typer.echo("Parsing Blue Raven HR IMU...")
-        df, meta = parse_blueraven_hr_csv(br_hr_file, tz_name=opts.tz_name)
-        out_csv = interim / "blueraven_hr_std.csv"
-        write_csv(df, out_csv)
-        write_meta(
-            interim / "blueraven_hr_std.meta.json",
-            base_dir=fpath,
-            input_files=[br_hr_file],
-            device="blueraven_hr",
-            serial=meta.get("serial"),
-            firmware=meta.get("firmware"),
-            mapping_used=meta.get("mapping_used", {}),
-            units_converted=meta.get("units_converted", []),
-            liftoff_method=meta.get("liftoff_method", "unknown"),
-            row_counts=meta.get(
-                "row_counts",
-                {"total": len(df), "after_clean": len(df), "gps_valid": 0},
-            ),
-        )
-        typer.echo(f"Wrote {out_csv}")
-
-    if not any([tele_file, br_file, fw_file, br_hr_file]):
+    if not wrote_any:
         typer.echo("No recognisable device files detected after sniffing.")
         raise typer.Exit(code=3)
 

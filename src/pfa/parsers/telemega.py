@@ -84,7 +84,8 @@ def _infer_t_flight(df: pd.DataFrame) -> Tuple[pd.Series, str]:
     return t_series - float(t0), method
 
 
-def parse_telemega_csv(path: Path) -> Tuple[pd.DataFrame, Dict]:
+def parse_telemega_csv(path: Path, *, source: str = "telemega") -> Tuple[pd.DataFrame, Dict]:
+    """Parse an Altus Metrum (AltOS) CSV export; ``source`` sets the source column."""
     df = pd.read_csv(
         path,
         header=0,
@@ -147,7 +148,7 @@ def parse_telemega_csv(path: Path) -> Tuple[pd.DataFrame, Dict]:
     out["device_sn"] = serial
     out["fw_version"] = fw
 
-    out = finalize(out, "telemega")
+    out = finalize(out, source)
 
     gps_valid = int(out["lat_deg"].notna().sum()) if "lat_deg" in out.columns else 0
     row_counts = {
