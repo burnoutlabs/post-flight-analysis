@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-11-06T05:02:04Z",
+  "generated_at_utc": "2026-11-06T05:06:13Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.1",
   "device": {
@@ -26,10 +26,11 @@
     "longitude": "lon_deg",
     "hdop": "hdop",
     "height": "alt_agl_m",
-    "altitude.1": "alt_gps_m_msl"
+    "altitude.1": "alt_gps_m_msl",
+    "time": "t_flight_s"
   },
   "units_converted": [],
-  "liftoff_method": "event",
+  "liftoff_method": "vendor_time",
   "row_counts": {
     "total": 5723,
     "after_clean": 5723,
