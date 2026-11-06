@@ -80,7 +80,8 @@ def test_same_serial_copy_is_not_duplicated(tmp_path):
     shutil.copy(TM_0003, flight / "raw" / "copy.csv")
     result = runner.invoke(app, ["preprocess", str(flight)])
     assert result.exit_code == 0, result.output
-    assert sorted(p.name for p in (flight / "interim").glob("*_std.csv")) == ["telemega_std.csv"]
+    committed = sorted(p.name for p in (DATA / flight.name / "interim").glob("*_std.csv"))
+    assert sorted(p.name for p in (flight / "interim").glob("*_std.csv")) == committed
 
 
 def test_blueraven_summary_identity(tmp_path):
@@ -113,3 +114,18 @@ def test_plot_labels():
     assert _plot_label("altusmetrum_5115_std") == "Altus Metrum s/n 5115"
     assert _plot_label("telemega_7000_std") == "Altus Metrum s/n 7000"
     assert _plot_label("blueraven_hr_std") is None  # IMU only, not on the alt/vel panels
+
+
+def test_committed_blueraven_meta_has_identity():
+    meta = json.loads(
+        (DATA / "2025-08-21_hyperion2_lc25" / "interim" / "blueraven_std.meta.json").read_text()
+    )
+    assert meta["device"]["serial"] == "SN628"
+    assert meta["device"]["firmware"] == "09afed1 11/05/2024 16:55:57"
+
+
+def test_callsign_blank_in_5115_log():
+    log = DATA / "2022-06-24_prometheus_sac22" / "raw" / "2022-06-24-serial-5115-flight-0001.csv"
+    rows = log.read_text().splitlines()
+    assert rows[0].split(",")[3] == "call"
+    assert {r.split(",")[3] for r in rows[1:] if r} == {""}

@@ -1,16 +1,20 @@
 {
-  "generated_at_utc": "2026-11-06T05:14:51Z",
+  "generated_at_utc": "2026-11-06T05:16:20Z",
   "pfa_version": "0.1.0",
   "schema_version": "gfr-0.2",
   "device": {
     "type": "blueraven",
-    "serial": null,
-    "firmware": null
+    "serial": "SN628",
+    "firmware": "09afed1 11/05/2024 16:55:57"
   },
   "input_files": [
     {
       "path": "raw/2025-08-21_primary_blueraven.csv",
       "sha256": "6a2175a48937294c54d9fa28da123ff2233b75cc3211ac309b03c6bf2f9460af"
+    },
+    {
+      "path": "raw/src/WERT FBR_summary_08-21-2025_14_11_45_.csv",
+      "sha256": "41195fc991c30bdecaa04dc498d6a6628dece13b4df89cbfaa7836165f672145"
     }
   ],
   "mapping_used": {
